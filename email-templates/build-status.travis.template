@@ -1,0 +1,161 @@
+<%
+// Some fancy auxiliary closures
+def getCommitId = {cs -> cs.metaClass.hasProperty('commitId') ? cs.commitId :  cs.metaClass.hasProperty('revision') ? cs.revision :  cs.metaClass.hasProperty('changeNumber') ? cs.changeNumber :  cs.hasProperty('id') ? cs.id :  ''}
+def getCommitMessage = {cs ->
+    if(cs.class.name.toString() == 'hudson.plugins.git.GitChangeSet') {
+        cs.getMsg()
+    }
+}
+def getBuildResult = { build -> build.result.toString() }
+
+def md5(String s) {
+    java.security.MessageDigest.getInstance("MD5").digest(s.bytes).encodeHex().toString()
+}
+%>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html;  charset=UTF-8" />
+</head>
+<body>
+<%
+def fontColor = '#adadad'
+def bgColor = '#efefef'
+def statusImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAgVJREFUeNrkl9FtAjEMhu8i3mGEjnAjwAZUDFAywcEEhQkOJoAOgGADYANGoRNQR/JVkbnYTnI8VLUUBe6I8+HYf5Ki+C92OBzeXIsdNxCcjqGroU29xzdo69lsdhJ877CfxAAZBmYO3ZnAOKugHeH97hWRNQyMNOE8BwrGNq6JQEqYLCgcsxAjxMBYyJkS8+GeA4W/dfPswecyCIQJHILZuw/QX3KgCIyVIlRzMK3B91sKlAaGAk0lmEgoi83BLDQwzkrvHzzIpKViCSqUhhF55XRqRdKhgmcbyWcQiItQB1RDhPPbB4oxH+gYs2wJpU7BqS1dKvg5tO2Sf5SCPuyueV9S9QwIVnKkwOcKc1K1hIYkshOqfc+RGkL71Iqn6Shp2zNUFSOeJqAzIaiPzDwSoYLHDwaqeCWU4Ub2BPUVA2UkbwTqGkuD1Wm1UEbp1Dlcp4ZIgGqelFqroj2odei8NcGjzW+EVCqaa0yk6qe9LFGBh57OqCPZFan2dGGUky/wCEHNbTNjr51x+TWRKpKqDCuhaSPRXgBxb6KORxooTvFNxBl4410Ad4xOsVCBxD5pLoqqM3AMFFNlW+miqIJRQo0VV6wLd1FsYmCUUA/piiUt2SYGJnHv6zz0DTqcLjPFz0JECoxyFIxahxIj9Y43EFpNE06HBgnzWSXUyS/nP2s/AgwAcJ0+DemiI2MAAAAASUVORK5CYII='
+def statusArrow = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAtCAYAAACecFpJAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAWhJREFUeNqcVtFtgzAUNA4DdAS6QbIBn/0EsUA6AekENBOETJBmACQ2aDZIN0hGyAi5Jz0qt4rDOz/pyRLidMf5no1zqGEYLujCEeV1PaIPKcAeXYC1ooBN09ywbNE7gF8YRgF/YbmiNxRQ6wPdWoz6AwTrD5ZRJLOME2sJ1pIChka5lALjGb1hpIaSu9j2RIGQfMJyikn2M4qFtQLrkgKCVQKxf8TqDT5NOV6HDzOjw5WyrnS7TIwiefyfY09s7btuT0EB1ah+GviMTJOE4YKus4Qoirtdlpjjb+/S6pgKbBeJ3/iW7CortZNRk5HLCbalRu6VjZyEfKsJcjkxHZLR2jxWashZTgOdEvN0yHddQ9CsVB0hcXLFHh1iSK9XgzMx6hVQTvYzjAc15MZE61OugGfv5BH723DPrFLFkFGvABujGlLFDHnGKGx71pC1/ChZ388DQ3ZzhjyS+jugFKMmpGaOgrsAAwBxMYuUVS1qmgAAAABJRU5ErkJggg=='
+def statusTime = 'data:image/png;base64,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'
+def scmBranch = ''
+
+if(getBuildResult(build) == 'SUCCESS') {
+    fontColor = '#32a32d'
+    bgColor = '#baecb7'
+    buildStatus = 'passed'
+    statusImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAxlBMVEX///8AAAAAgAAAgAAAmQAgnyAamRouohcrlSskkiQimSIooSgxniQpmSkvoSYumyQtni0soCwyoysyoiwuoikyoSwvoSsvoSsuoisxoS0yoysxoSoyoSwxoCsxoSwwoisxoSwyoisxoysyoSwyoi0xoiwxoiwxoiwxoiwxoi0xoiwxoy0xoiwyoiwxoywxoy0yoy0xoi0yoiwxoi0xoy0yoywyoiwxoywxoi0xoiwxoi0yoi0yoiwxoiwyoi0yoy0xoywyoy0ps6G2AAAAQXRSTlMAAQIEBQgKCwwODxMVGRscIiMkKSwuNkFCREhJV1lia212gouPoaKorLCytrq+v8HM1Nfe5ebn6Ont9PX3+Pr7/hbgcT4AAAEPSURBVDjLtdTZVsIwEAbgAbUIIrKKK6jsW8Eqm4gl7/9SlHYCTWaaeMN/lXP6naadmQTgTCmUueRTqrp8mQo+y3b+xHIfC5GceU261FgYM5Lw1ezErojQ8kIhWgjXNri+iuDOBsVjBJMe+0MPV89GuKmD4/4DBg6kNMHQBfLbAtEB9Mzw6OpbCmeNAXUb+o2uA+ku7xQYOEBJXBz+5MLlQVIXh3+3gJJxytYTB2WVOvVnpGScVh5FKk4veEyqjnTmKDVHW4hSd0yvQ0kcNxSBpI6dHm/oiyToWw/XUwT7VngfwQeb22awbJ4FdmUf3sxudSfhtWtgv53KaQQump8J7Ov9RruZs0XuZi6l4ZzZA0mh9GfPkNgzAAAAAElFTkSuQmCC'
+    statusArrow = 'data:image/png;base64,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'
+    statusTime = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAMAAAC6V+0/AAAAAXNSR0IArs4c6QAAAAlwSFlzAAALEwAACxMBAJqcGAAAAVlpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IlhNUCBDb3JlIDUuNC4wIj4KICAgPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KICAgICAgPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIKICAgICAgICAgICAgeG1sbnM6dGlmZj0iaHR0cDovL25zLmFkb2JlLmNvbS90aWZmLzEuMC8iPgogICAgICAgICA8dGlmZjpPcmllbnRhdGlvbj4xPC90aWZmOk9yaWVudGF0aW9uPgogICAgICA8L3JkZjpEZXNjcmlwdGlvbj4KICAgPC9yZGY6UkRGPgo8L3g6eG1wbWV0YT4KTMInWQAAAb9QTFRFAAAAAAAAAP8AAIAAAP8AAKoAVaoAVapVQIBAQL9AM5kzK4ArK6orJLYkOaocK6orJ50nN6QkMJ8wK6orMZ4xLqIuMZ0nL6EvLqQuM6IrMZwpL6EoLZ8tL6AqLqIpMaMrMJ8rMaIsMaEtMKMsLqIrMqIrMqIuMaEtMKMsMqMuMaEtMqEsMKEtMJ8tMKItMqEsMKMtMaIsMaMrMKIrMKItMqItMaQsMaIsMqMtMKErMaIsMKIrMaMtMaIsMKMsMqMsMqMuMqIrM6IsMqQuMaQtM6QtMaItMqMtMqEsMqMsMaMtMKItMqItMaEsMaMsM6MsMKEtMaMtMqMsMaMtMqIsMqIsMqQsMqMtMaItMaMtMqItMqItMaMtMqQtMqMtM6MsMqMtMqMtMqIsMqIsMqItMaMtMqQtMqMsMqMsMqMsMaItMaMtMqMtMqMtMqMsMqItMqMtMqItMqMsMaMtMqMtMqMtMqMtMaIsMaItMqIsMqMtMqMtMqMtMqQtM6YuM6cuM6guNKkvNKovNKsvNawvNawwNa0wNa8wNrAwNrExN7IxN7MxN7QyN7UyOLUyOLYyOLcyOLczOLgzOrw0O8I1TdY4SQAAAHx0Uk5TAAEBAgIDAwMEBAUGBgcJDA0OEBIVFhobHB4fJigrLC8wNDk6QkJCREVISUxPUFVXW11eYGBgYmNnam5wcnN0dXV2eXuDg4eOkJCTlJSYm5yepq6xsrOztLW2u8LFxs3P0NLW19fe4ubr7O3u7vDx9Pb39/n5+vv9/f39/nkX+AQAAAEtSURBVBgZBcEHQ41RAADQc+9943ufZGc+q2yykxnZKyN775BN2SrjRaQnfrBzQMHW933v3jxolgAIrv398rH276AcAHFD54lXe/cvlQDEhE3P5qIIkFh2/m3tc+1x1zwJiMKx2s+75y6ffTLW3y5C4FT9XmuYus20PR++b1dCyY7RmzNpOo4lLwabFTH90euqieZ0p9Bg48glAW31o/Jo/pVc5MZAVaJrZKVysvh2o1Cxb2yzjIuDValoRd8kMdM23innzNBCKWraUqKifXy3Cod+r5UJIHPkV6syq0dOy4gZyeSel7NEJtyqrZEXQwhZcqB+UoGSVd+eLgfs/PpwtoSCXcMDhxc0Nkxp6f7R36IMonX3/wz13OkdHr2+SBmQzOi4+vxT74X1uTL8ByHjN/9GJ7f4AAAAAElFTkSuQmCC'
+}
+else if(getBuildResult(build) == 'FAILURE') {
+    bgColor = '#fdcdce'
+    fontColor = '#df192a'
+    buildStatus = 'failed'
+    statusImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAt1BMVEX///+qAAC/AADMAADGABzVFRXbEiTdESLXDSjVFSDcEiPaFybcFSPdFCjeFCfaGSXbGCreFibcFifdGSjdGCfdGCndGCneFyjeGCjdFyjeGSndGCrdGCreGCrfGCndFyrfGSneGCrfGCneGSneGCneGCneGSnfGSnfGSnfGCrfGSreGSneGSnfGCrfGCnfGCneGSreGCreGCreGSneGCnfGCrfGSrfGSneGSreGCrfGCnfGCnfGSojP+HsAAAAPHRSTlMAAwQFCQwODxMYHSIkJicpKy87UmFpam1zeHuAgZKXmK+xtru8wMLFzdbX2drc3t/h6Onr8vT19vn7/P5Q4wScAAABKklEQVQ4y7WT21LCMBBAI4pQraCUemnV1htFsCoqcjH//13udmObhtkkL56n7HKGzuRMhDDZuy7LK+FBIoFLtxcsUVwGTjGTFZnLG2xI3AwcYi4Vud0byZqRVSwasbB5kdSIeK8z18V5hxVj2SLmvO4Cfl0lF0CyguOiy4gp/s2UzlM8p7Z4zzTMLCEp3hsN73xIFe+Dpk8+pIr3RdM3G/Iv3pbGHzZkHW8fpwM2ZBOvh2OfC6nFq67kiAupxTuuroAJWcVTjEPgvJlbIVNpITXjcWghM33/cg+86ptb8+URZ7g61Td1yLz1pRBXYWuV77w8RlQhC7dY7Lw84ASXQ2MZmS8PmNwAT8YSQsbSi1iUfmIp1n7i2rhEljtx+OihbR+wdxA66Yl/4BdhCbJfpatiEAAAAABJRU5ErkJggg=='
+    statusArrow = 'data:image/png;base64,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'
+    statusTime = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAMAAAC6V+0/AAAAAXNSR0IArs4c6QAAAAlwSFlzAAALEwAACxMBAJqcGAAAAVlpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IlhNUCBDb3JlIDUuNC4wIj4KICAgPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KICAgICAgPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIKICAgICAgICAgICAgeG1sbnM6dGlmZj0iaHR0cDovL25zLmFkb2JlLmNvbS90aWZmLzEuMC8iPgogICAgICAgICA8dGlmZjpPcmllbnRhdGlvbj4xPC90aWZmOk9yaWVudGF0aW9uPgogICAgICA8L3JkZjpEZXNjcmlwdGlvbj4KICAgPC9yZGY6UkRGPgo8L3g6eG1wbWV0YT4KTMInWQAAAcJQTFRFAAAAAAAA/wAAgAAA/wAAqgAA/wAA/wBVvwBA/wBAzAAz/wAz/zMz1QAr/ysr2yQk4xwc6hUr2BQn2xIk3xAg4xwr5xgk3Bcj2BQn4xMm2xIk3Ror3hkp3RQo3xom2xgq3Bcp3hYr2hUr3Rkn2xYo3BYo3Boo3Bcn3Bcr4Bcr3Rcp3hYp3xkn4Bgq3Rco3xcq3Bop3hgq3Bcp3RYq2xkp3hgr3Bgo4Bcq4Bop3xkq3Rgp3xcn3Rcp4Bko3hgo3hgq3hgp3xgp3xco3xkq4Bkp4Bcp4Bkr3xkq3xkp3Rkp3xkr3hgq3hgp3Rco3hkp3hkr3Rgo3xkp3xkr3hgq3xgq3xgq3hgp4Bgp4Bgp3xkq3xkq3hkq3hkq3xkp3xgp3xkq3xkq3hkq3hgp3xkq3hkq3xkq3xkp3xkq3xgq4Bkq3xkq3xkq3xkq3xgp3hgq3xkq3xkp3xkp3xkq3hkq3xkq3xgq3xoq3hgq3xkp3xkq3xkq3xkq4Bkq4xkr5Bkr5Rkr5hor5xos6Bos6hos7Bos7Ros7Rot7Rst7xst8Rst8hsu9Bsu9hwu9xwu9xwv+Bwv+Rwv+hwv+xwv/Bwv/x0w/x4yRiJwagAAAHt0Uk5TAAEBAgIDAwMEBAUFBQYGBwkMDQ4QEhUWGhscHh8mKCssLzA0OTo6QkJCREVISUxPUFVXW11eYGJjZ2pucHJzdHV2eXl7g4OHjpCQk5SYm5yepq6xsbKzs7S1trvCxcbNz9DS1tfX3uLm6+zt7vDx9Pb39/n5+vr7/f3+K/iIigAAAStJREFUGBkFwQdDjHEcAODHr/+93jsiO/Ns2TIuWWWvZO+9Q/bIGSGpOOvE9/U8INny5lW1en+JBEC4+vfzu+F/B4wDQGzaffTFnn3LJQCRUHkyFwWABlace/1lYOhh9zwNQIiuodqds5fOPKr3tQsYw/H63daYutW0nW+/blNAZvvPGzNpPoJlTz8sVcD03mrZRHNOpZigUrso0FbvUgrzL5cE1/vLEt211bJk8e0mUbT3d0XOhY9lqWDVy0ki1za6S4nTAwul0Lw5o6h9tFORg7/WywXIHf7eaixrayfkRE4yuef5LEHjzeF1xhciIk/2149JZNYMPl4J2DH4YLaEpGOk/9CCpsYpLSe/9bXIQNhw78+nnlu9Iz+uLZIBkhmdV5697z2/sSSD/7rmOM4buPw/AAAAAElFTkSuQmCC'
+} else if(build.result == hudson.model.Result.ABORTED) {
+    buildStatus = 'manually aborted'
+    statusImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAYBJREFUeNrsmIGNgzAMAAF1gB+hI6QTQDdoxQBtN4AJ+hs8G5QOgP43KExARmCEjlBHMijiSZP0E7BejWRFFTU5bMexEwTERmirUFXVDqYYhIEkir/VIBykSdP0xzkQQHzAlIEcQNaW39CBXEEKgLv/GQgt8vUCyBRYrrNYqIG5wHR0HCYlQJ2sgNBFN4wTH0PE13bKhZFCwSdMgO++TT2IFG5iM+xwhmupXYYB/D1z6tnLgR6O4qZ1sJte2X2bPp5kl2ULwAS4Ztb/WEkPDgbK4ku4ZWZnaPlnQ6z9OVgIY0drHVsYC501Mgwuiwmcq7EMxAgAMRkoIQCUPMvUi4030BvIFVBNgKWWgTgBIC4DNQSAmgEI65HO8KC0bZtMdLq+JpJPe9GqnDWKLSzgwzrXqV1WmFjJU4FW/ALCii1fACiXu49oVLsIP5YzwpTjxlHVl7UzlCQcYDammXrrOTdxXIN+Kx1p6mGhuHe0+zrswU7/6zpGcT3j7cKK3HgIMADiCoEb6yehIwAAAABJRU5ErkJggg=='
+}
+%>
+<div id="body" style="font-family:  'Helvetica Neue', Helvetica, Arial, sans-serif;  font-size: 16px;  color: #808080;  width: 570px;  margin: 0 auto">
+    <table  style="padding: 0; width: 100%; color: #606060; font-size: 20px; margin-bottom: 15px; margin-top: 15px; ">
+        <tr style="padding: 0; ">
+            <td style="padding: 0; vertical-align: middle">
+                <span style="vertical-align: middle; margin-left: 3px">
+                    <strong>
+                        <a href="${rooturl}/job/${project.name}" style="text-decoration: underline; color: #606060">${project.name}</a>
+                    </strong>
+                    <!--
+                    (<span style="text-decoration: underline; color: #606060">${scmBranch}</span>)
+                    -->
+                </span>
+            </td>
+        </tr>
+    </table>
+
+    <div id="build" style="border-radius: 5px; padding: 0; font-size: 12px">
+        <div>
+            <table style="padding: 0; width: 100%; border-spacing: 0">
+                <thead>
+                    <tr style="padding: 0; font-weight: 700; font-size: 18px; background-color: <%= bgColor %>; color: <%= fontColor %>">
+                        <td style="vertical-align: middle; border-top: 1px solid #808080; border-bottom: 1px solid #adadad;  width: 50px; text-align: center; padding:  5px 0 0; border-left: 1px solid #606060; border-top-left-radius: 5px">
+                            <div  style="width: 25px; background-size: 25px; height: 30px; margin-left: 15px; margin-top: 0; vertical-align: middle">
+                                <img src="<%= statusImage %>" width="25" height="25" />
+                            </div>
+                        </td>
+                        <td style="padding: 0 20px 0 0; vertical-align: middle; border-top: 1px solid #808080; border-bottom: 1px solid #adadad">
+                                <span style="display: inline-block; margin-top: 12px; vertical-align: middle">
+                                    <a href="${rooturl}${build.url}" style="font-weight: bold; text-decoration: underline; color: <%= fontColor %>">
+                                        Build #${build.number} ${buildStatus}.
+                                    </a>
+                                </span>
+                            <img src="<%= statusArrow %>" style="float: right; " height="45" />
+                        </td>
+                        <td align="right" style="font-weight: normal; font-size: 12px; vertical-align: middle; padding: 0 20px 0 0; border-top: 1px solid #808080; border-bottom: 1px solid #adadad; border-right: 1px solid #606060; border-top-right-radius: 5px">
+                            <div style="vertical-align: middle; height: 20px; width: 20px; padding: 0; background-size: 20px; display: inline-block; ">
+                                <img src="<%= statusTime %>" width="20" height="20" />
+                            </div>
+                                <span style="vertical-align: middle">
+                                    ${build.durationString}
+                                </span>
+                        </td>
+                    </tr>
+                </thead>
+                <tbody style="margin-bottom: 40px">
+                    <%
+                    def changeSet = build.changeSet
+                    if(changeSet != null && !changeSet.isEmptySet()) {
+                        changeSet.each() { cs ->
+                            def commitId = getCommitId(cs)
+                            def commitMessage = getCommitMessage(cs)
+                            def authorName = cs.author.getFullName()
+                            def authorEmail = cs.author.getProperty(hudson.tasks.Mailer.UserProperty.class) != null ? cs.author.getProperty(hudson.tasks.Mailer.UserProperty.class).getAddress() : ''
+                    %>
+                    <tr style="padding: 0; border: 0">
+                        <td style="height: 20px; width: 50px; border-left: 1px solid #adadad; padding:  20px 0 5px; text-align: center">
+                            <% if(authorEmail != '') { %>
+                                <img src="https://secure.gravatar.com/avatar/<%= md5(authorEmail) %>?s=16" />
+                            <% } %>
+                        </td>
+                        <td style="color: #808080; padding: 20px 20px 5px 0; height: 20px; ">
+                            <strong>${authorName}</strong>
+                        </td>
+                        <td style="color: #808080; height: 20px; border-right: 1px solid #adadad; padding:  20px 20px 5px 0; text-align: right;">
+                            <a href="${rooturl}${build.url}/changes" style="text-decoration: none; font-weight: bold; color: #57769d">${commitId.substring(0,7)}</a>
+                            <a href="${rooturl}${build.url}/changes" style="text-decoration: none; font-weight: bold; color: #57769d">Changeset &rarr; </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border-left: 1px solid #adadad; ">&nbsp; </td>
+                        <td colspan="2" style="border-right: 1px solid #adadad; ">
+                            ${commitMessage}
+                        </td>
+                    </tr>
+                    <% } %>
+                    <tr style="padding: 0; border: 0">
+                        <td style="width:  50px;  padding:  0;  border-left:  1px solid #adadad;  border-bottom-left-radius:  5px;  border-bottom:  1px solid #adadad">
+                            &nbsp; 
+                        </td>
+                        <td colspan="2" style="color:  #808080;  height:  10px;  border-right:  1px solid #adadad;  border-bottom:  1px solid #adadad;  border-bottom-right-radius:  5px">
+                            &nbsp; 
+                        </td>
+                    </tr>
+                    <%
+                    } else {
+                    %>
+                    <tr style="padding: 0; border: 0">
+                        <td align="center" colspan="3" style="color: #808080; height: 20px; border-right: 1px solid #adadad; padding: 10px 20px; border-bottom: 1px solid #adadad; border-bottom-right-radius: 5px; border-left:  1px solid #adadad;  border-bottom-left-radius:  5px">
+                            There are no SCM changes!
+                        </td>
+                    </tr>
+                    <%
+                    }
+                    %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div style="padding-top: 10px; width: 570px">
+        <div style="margin-top: 20px; border-radius: 5px; border: 1px solid #adadad; font-size: 12px; padding: 10px 20px;">
+            <p  style="color: #808080; margin-top: 0; margin-bottom: 5px">
+                <strong style="font-size: 14px">Build Causes</strong>
+            </p>
+            <p  style="color: #808080; margin-top: 0; margin-bottom: 5px; ">
+                <% build.causes.each() { cause -> %> ${cause.shortDescription} <%  } %>
+            </p>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>
