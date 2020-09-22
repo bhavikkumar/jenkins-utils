@@ -107,9 +107,11 @@ else if(getBuildResult(build) == 'FAILURE') {
                 </thead>
                 <tbody style="margin-bottom: 40px">
                     <%
-                    def changeSet = build.changeSets
-                    if(changeSet != null && !changeSet.isEmpty()) {
-                        changeSet.each() { cs ->
+                    def changeSets = build.changeSets
+                    if(changeSets != null && !changeSets.isEmpty()) {
+                      changeSets.each() { 
+                        changeSetList -> changeSetList.each() { 
+                          cs ->
                             def commitId = getCommitId(cs)
                             def commitMessage = getCommitMessage(cs)
                             def authorName = cs.author.getFullName()
@@ -125,8 +127,8 @@ else if(getBuildResult(build) == 'FAILURE') {
                             <strong>${authorName}</strong>
                         </td>
                         <td style="color: #808080; height: 20px; border-right: 1px solid #adadad; padding:  20px 20px 5px 0; text-align: right;">
-                            <a href="${rooturl}${build.url}/changes" style="text-decoration: none; font-weight: bold; color: #57769d">${commitId.substring(0,7)}</a>
-                            <a href="${rooturl}${build.url}/changes" style="text-decoration: none; font-weight: bold; color: #57769d">Changeset &rarr; </a>
+                          <a href="${baseUrl}/${organization.name}/${parentProject.name}/commit/${commitId}" style="text-decoration: none; font-weight: bold; color: #57769d">${commitId.substring(0,7)}</a>
+                          <a href="${baseUrl}/${organization.name}/${parentProject.name}/commit/${commitId}" style="text-decoration: none; font-weight: bold; color: #57769d">Changeset &rarr; </a>
                         </td>
                     </tr>
                     <tr>
@@ -135,7 +137,8 @@ else if(getBuildResult(build) == 'FAILURE') {
                             ${commitMessage}
                         </td>
                     </tr>
-                    <% } %>
+                    <% }
+                      } %>
                     <tr style="padding: 0; border: 0">
                         <td style="width:  50px;  padding:  0;  border-left:  1px solid #adadad;  border-bottom-left-radius:  5px;  border-bottom:  1px solid #adadad">
                             &nbsp; 
